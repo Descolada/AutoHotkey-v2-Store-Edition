@@ -13,9 +13,9 @@ The MSIX version has some key differences to native AHK installation.
 
 The MSIX version creates the following 
 Start Menu items:
-* AutoHotkey Dash
-* AutoHotkey Window Spy
-* Ahk2Exe (not included in the original version)
+* AutoHotkey (opens Dash)
+* AutoHotkey v1 (opens v1 help)
+* AutoHotkey v2 (opens v2 help)
 
 App execution aliases (commands):
 * AutoHotkey.exe (wrapper for launcher.ahk + Dash functionalities)
