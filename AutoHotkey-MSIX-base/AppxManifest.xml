@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Package IgnorableNamespaces="build desktop7 rescap uap uap10 uap2 uap3 uap4 uap5 uap7 uap8" xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:build="http://schemas.microsoft.com/developer/appx/2015/build" xmlns:desktop7="http://schemas.microsoft.com/appx/manifest/desktop/windows10/7" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10" xmlns:uap2="http://schemas.microsoft.com/appx/manifest/uap/windows10/2" xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3" xmlns:uap4="http://schemas.microsoft.com/appx/manifest/uap/windows10/4" xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5" xmlns:uap7="http://schemas.microsoft.com/appx/manifest/uap/windows10/7" xmlns:uap8="http://schemas.microsoft.com/appx/manifest/uap/windows10/8">
+  <!--         Package created by MSIX Packaging Tool version: 1.2023.807.0         -->
+  <!-- For internal publishing the Publisher should match the subject of the code signing certificate. -->
+  <!-- Publisher for Testing: CN=Descolada -->
+  <!-- Publisher for Release: CN=DB1E1D5E-14D7-4171-BEBB-84EAB88BC464 -->
+  <Identity Name="53721Descolada.AutoHotkeyv2StoreEdition" ProcessorArchitecture="x64" Publisher="CN=DB1E1D5E-14D7-4171-BEBB-84EAB88BC464" Version="2.0.10.0" />
+  <Properties>
+    <DisplayName>AutoHotkey v2 Store Edition</DisplayName>
+    <PublisherDisplayName>Descolada</PublisherDisplayName>
+    <Description>AutoHotkey v2 Store Edition</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <uap10:PackageIntegrity>
+      <uap10:Content Enforcement="on" />
+    </uap10:PackageIntegrity>
+  </Properties>
+  <Resources>
+    <Resource Language="en-US" />
+    <Resource uap:Scale="100" />
+    <Resource uap:Scale="125" />
+    <Resource uap:Scale="150" />
+    <Resource uap:Scale="200" />
+    <Resource uap:Scale="400" />
+  </Resources>
+  <Dependencies>
+    <TargetDeviceFamily MaxVersionTested="10.0.22000.1" MinVersion="10.0.17763.0" Name="Windows.Desktop" />
+  </Dependencies>
+  <Applications>
+	<!--         AutoHotkey Dash
+		Creates start menu item for Dash
+		Runs v1 or v2 depending on what settings have been set in Dash
+		Associates with .ahk files	
+		Creates shell menu items for .ahk files 	-->
+    <Application EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe" uap10:Parameters="&quot;C:\Program Files\AutoHotkey\UX\ui-dash.ahk&quot;" uap10:Subsystem="console" uap10:SupportsMultipleInstances="true" Id="AutoHotkey">
+      <uap3:VisualElements AppListEntry="default" BackgroundColor="transparent" Description="AutoHotkey Dash" DisplayName="AutoHotkey" Square150x150Logo="Assets\AutoHotkeyDashSquare150x150Logo.png" Square44x44Logo="Assets\AutoHotkeyDashSquare44x44Logo.png" VisualGroup="AutoHotkey Store Edition">
+        <uap:DefaultTile Square310x310Logo="Assets\AutoHotkeyDashSquare310x310Logo.png" Square71x71Logo="Assets\AutoHotkeyDashSquare71x71Logo.png" Wide310x150Logo="Assets\AutoHotkeyDashWide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\AutoHotkeyDashSplashScreen.png" />
+        <uap:LockScreen BadgeLogo="Assets\AutoHotkeyDashBadgeLogo.png" Notification="badge" />
+      </uap3:VisualElements>
+      <Extensions>
+        <desktop7:Extension Category="windows.shortcut">
+          <desktop7:Shortcut Arguments="&quot;C:\Program Files\AutoHotkey\UX\ui-dash.ahk&quot;" Description="AutoHotkey Dash" File="[{Common Programs}]\AutoHotkey Dash.lnk" Icon="[{ProgramFilesX64}]\AutoHotkey\v2\AutoHotkey64.exe" />
+        </desktop7:Extension>
+        <uap5:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe">
+          <uap5:AppExecutionAlias uap10:Subsystem="console">
+            <uap8:ExecutionAlias Alias="AutoHotkey.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+        <uap3:Extension Category="windows.fileTypeAssociation" EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe">
+          <uap3:FileTypeAssociation Name="ahk" Parameters="&quot;%1&quot; %*">
+            <uap:Logo>Assets\ahk.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType uap4:ShellNewDisplayName="AutoHotkey Script" uap4:ShellNewFileName="AutoHotkey Script.ahk">.ahk</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap2:SupportedVerbs>
+              <uap3:Verb uap7:Default="true" Id="Open" Parameters="/open &quot;%1&quot; %*">Run script</uap3:Verb>
+              <uap3:Verb Id="Edit" Parameters="/edit &quot;%1&quot;">Edit script</uap3:Verb>
+              <uap3:Verb Id="RunAs" Parameters="/runas &quot;%1&quot; %*">Run as Administrator</uap3:Verb>
+            </uap2:SupportedVerbs>
+          </uap3:FileTypeAssociation>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+	<!--         AutoHotkey v2 U64
+		Creates alias AutoHotkeyV2.exe	-->
+    <Application EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey64.exe" uap10:Parameters="&quot;C:\Program Files\AutoHotkey\UX\LaunchHelpV2.ahk&quot;" Id="AutoHotkeyV2U64" uap10:Subsystem="console" uap10:SupportsMultipleInstances="true">
+      <uap3:VisualElements AppListEntry="default" BackgroundColor="transparent" Description="AutoHotkey v2 Unicode 64-bit" DisplayName="AutoHotkey v2" Square150x150Logo="Assets\AutoHotkeyDashSquare150x150Logo.png" Square44x44Logo="Assets\AutoHotkeyDashSquare44x44Logo.png" VisualGroup="AutoHotkey Store Edition">
+        <uap:DefaultTile Square310x310Logo="Assets\AutoHotkeyDashSquare310x310Logo.png" Square71x71Logo="Assets\AutoHotkeyDashSquare71x71Logo.png" Wide310x150Logo="Assets\AutoHotkeyDashWide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\AutoHotkeyDashSplashScreen.png" />
+        <uap:LockScreen BadgeLogo="Assets\AutoHotkeyDashBadgeLogo.png" Notification="badge" />
+      </uap3:VisualElements>
+      <Extensions>
+        <uap5:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey64.exe">
+          <uap5:AppExecutionAlias uap10:Subsystem="console">
+            <uap8:ExecutionAlias Alias="AutoHotkeyV2.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+	<!--         AutoHotkey v1
+		Creates execution alias AutoHotkeyV1.exe which runs v1 U64	-->
+    <Application EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\AutoHotkeyU64.exe" uap10:Parameters="&quot;C:\Program Files\AutoHotkey\UX\LaunchHelpV1.ahk&quot;" Id="AutoHotkeyV1U64" uap10:Subsystem="console" uap10:SupportsMultipleInstances="true">
+      <uap3:VisualElements AppListEntry="default" BackgroundColor="transparent" Description="AutoHotkey v1 Unicode 64-bit" DisplayName="AutoHotkey v1" Square150x150Logo="Assets\AutoHotkeyV1U64Square150x150Logo.png" Square44x44Logo="Assets\AutoHotkeyV1U64Square44x44Logo.png" VisualGroup="AutoHotkey Store Edition">
+        <uap:DefaultTile Square310x310Logo="Assets\AutoHotkeyV1U64Square310x310Logo.png" Square71x71Logo="Assets\AutoHotkeyV1U64Square71x71Logo.png" Wide310x150Logo="Assets\AutoHotkeyV1U64Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\AutoHotkeyV1U64SplashScreen.png" />
+        <uap:LockScreen BadgeLogo="Assets\AutoHotkeyV1U64BadgeLogo.png" Notification="badge" />
+      </uap3:VisualElements>
+      <Extensions>
+        <uap5:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\AutoHotkeyU64.exe">
+          <uap5:AppExecutionAlias uap10:Subsystem="console">
+            <uap8:ExecutionAlias Alias="AutoHotkeyV1.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <build:Metadata>
+    <build:Item Name="OperatingSystem" Version="10.0.19041.3155" />
+    <build:Item Name="SignTool.exe" Version="10.0.20348.1" />
+    <build:Item Name="MakePri.exe" Version="10.0.20348.1" />
+  </build:Metadata>
+  
+<Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities></Package>
+<!-- <rescap:Capability Name="uiAccess" /> -->
