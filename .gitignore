@@ -1,3 +1,4 @@
+.gitignore
 Assets/SignCert.pfx
 Assets/SignCertPasswd.txt
 Assets/StoreUploadData/privacy_policy.*
