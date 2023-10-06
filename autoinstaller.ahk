@@ -1,8 +1,9 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 global AHK_V2_VERSION := "2.0.10.0", AHK_INSTALLDIR := "C:\Program Files\AutoHotkey", AHK_UNINSTALLER := AHK_INSTALLDIR "\UX\ui-uninstall.ahk",
     MSIX_BASEDIR := A_ScriptDir "\AutoHotkey-MSIX-base", MSIX_RELEASEDIR := A_ScriptDir "\AutoHotkey-MSIX-release",
-    MAKEPRI_PATH := '"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makepri.exe"'
+    MAKEPRI_PATH := '"' A_ScriptDir '\Assets\makepri.exe"'
+; Makepri.exe is usually located in "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makepri.exe"
 
 if A_Args.Length {
     ; Used to remove an empty AHK_INSTALLDIR folder which usually is in Program Files and requires admin access
@@ -14,9 +15,9 @@ if A_Args.Length {
 
 Main()
 Main() {
-    ;RemoveOldAHK()
-    ;DownloadLatestAutoHotkeyVersions()
-    ;InstallAHKVersions()
+    RemoveOldAHK()
+    DownloadLatestAutoHotkeyVersions()
+    InstallAHKVersions()
     CopyFiles()
     PackageFolderToMSIX()
 }
@@ -77,15 +78,40 @@ CopyFiles() {
     DirCopy(MSIX_BASEDIR, MSIX_RELEASEDIR)
     if DirExist(AHK_INSTALLDIR) && FileExist(AHK_INSTALLDIR "\UX\AutoHotkeyUX.exe")
         DirCopy(AHK_INSTALLDIR, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey")
+
+    ; Delete unnecessary exe files: AutoHotkeyUX, default AutoHotkey.exe, UIAccess versions
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\AutoHotkeyUX.exe") ; Unused in the Store Edition
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\AutoHotkey.exe") ; Unused in the Store Edition
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe") ; Unused in the Store Edition
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey64_UIA.exe") ; Unused in the Store Edition
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey32_UIA.exe") ; Unused in the Store Edition
+    ; Copy AutoHotkeyShell over, which will act as runner for v1 and v2
     ShellName := FileExist(".\AutoHotkey.exe") ? ".\AutoHotkey.exe" : ".\Assets\AutoHotkeyShell.exe"
     FileCopy(ShellName, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe")
+    ; Copy help file launchers over, which are necessary to avoid this MSIX from needing console application privileges
     FileCopy(".\Assets\LaunchHelpV1.ahk", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\LaunchHelpV1.ahk")
     FileCopy(".\Assets\LaunchHelpV2.ahk", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\LaunchHelpV2.ahk")
+    ; Copy over the template script files for v1 and v2
+    if FileExist(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\Templates\Minimal for v2.ahk")
+        FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\Templates\Minimal for v2.ahk")
+    FileAppend('/*`n[NewScriptTemplate]`nDescription = Standard v2 Template`n*/`n' FileRead(MSIX_RELEASEDIR "\Assets\Minimal for v2.ahk"), MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\Templates\Minimal for v2.ahk")
+    FileAppend('/*`n[NewScriptTemplate]`nDescription = Standard v1 Template`n*/`n' FileRead(MSIX_RELEASEDIR "\Assets\Minimal for v1.ahk"), MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\Templates\Minimal for v1.ahk")
+    ; Modify ui-dash.ahk to apply registry defaults for HKCU. This is needed because if the package
+    ; applied the defaults then they can't be written to afterwards... 
+    inject := "
+    (LTrim
+        if ConfigRead("Dash", "FirstRun", "1") = 1
+            ConfigWrite("0", "Dash", "FirstRun"), ConfigWrite("Minimal for v2", "New", "DefaultTemplate")
+
+        class AutoHotkeyDashGui extends
+    )"
+    uidash := FileRead(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-dash.ahk")
+    uidash := StrReplace(uidash, "class AutoHotkeyDashGui extends", inject,, &count:=0, 1)
+    if !count {
+        ExitWithMsg("Failed to inject default registry settings to ui-dash.ahk. Exiting...")
+    }
+    FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-dash.ahk")
+    FileAppend(uidash, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-dash.ahk")
     if AHK_V2_VERSION {
         DebugPrint("Modifying manifest file for version update")
         manifest := FileRead(MSIX_RELEASEDIR "\AppxManifest.xml")
@@ -109,30 +135,33 @@ PackageFolderToMSIX() {
     ; https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-manual-conversion
     SavedWorkingDir := A_WorkingDir
     SetWorkingDir(MSIX_RELEASEDIR) ; Required for makepri.exe
-    RunWait(MAKEPRI_PATH ' createconfig /cf priconfig.xml /dq en-US')
-    RunWait(MAKEPRI_PATH ' new /pr "' MSIX_RELEASEDIR '" /cf "' MSIX_RELEASEDIR '\priconfig.xml"')
+    msg := RunWaitOutputStd(MAKEPRI_PATH ' createconfig /cf priconfig.xml /dq en-US')
+    if !FileExist("priconfig.xml") {
+        ExitWithMsg("Failed to create priconfig.xml with message:`n`n" msg "`n`nExiting...")
+    }
+    msg := RunWaitOutputStd(MAKEPRI_PATH ' new /pr "' MSIX_RELEASEDIR '" /cf "' MSIX_RELEASEDIR '\priconfig.xml"')
     SetWorkingDir(SavedWorkingDir)
     if !FileExist(MSIX_RELEASEDIR "\resources.pri")
-        ExitWithMsg("Failed to create resources.pri. Exiting...")
+        ExitWithMsg("Failed to create resources.pri with message:`n`n" msg "`n`nExiting...")
     DebugPrint("Packaging into MSIX")
     if FileExist(".\AutoHotkey-MSIX-release.msix")
         FileDelete(".\AutoHotkey-MSIX-release.msix")
+    ; For some reason running this with RunWaitOutputStd fails
     RunWait('MSIXHeroCLI.exe pack --directory "' MSIX_RELEASEDIR '" --package "' A_ScriptDir "\AutoHotkey-MSIX-release-unsigned.msix")
     if !FileExist(".\AutoHotkey-MSIX-release-unsigned.msix") {
-        ExitWithMsg("Failed to pack MSIX. Exiting...")
+        ExitWithMsg("Failed to pack MSIX! Exiting...")
     }
     if FileExist(".\Assets\SignCert.pfx") {
         DebugPrint("Signing MSIX with certificate SignCert.pfx")
         ; MSIXHeroCLI.exe sign --file <path-to-pfx-file> [--password <certificate-password>] [--timestamp <timestamp-server-url>] [--increaseVersion Major|Minor|Build|Revision|None] [--noPublisherUpdate] <path1> [<path2> [<path3>...]]
         passwd := FileExist(".\Assets\SignCertPasswd.txt") ? Trim(FileRead(".\Assets\SignCertPasswd.txt")) : ""
-        RunWait(A_ComSpec ' /c MSIXHeroCLI.exe sign --file "' A_ScriptDir '\Assets\SignCert.pfx" --password "' passwd '" --increaseVersion None --timestamp "http://time.certum.pl/" "' A_ScriptDir '\AutoHotkey-MSIX-release-unsigned.msix" > stdout.tmp')
-        if FileExist(".\stdout.tmp") {
-            if InStr(StdOut := FileRead(".\stdout.tmp"), "Package signed successfully!") {
+        msg := RunWaitOutputStd('MSIXHeroCLI.exe sign --file "' A_ScriptDir '\Assets\SignCert.pfx" --password "' passwd '" --increaseVersion None --timestamp "http://time.certum.pl/" "' A_ScriptDir '\AutoHotkey-MSIX-release-unsigned.msix"')
+        if msg {
+            if InStr(msg, "Package signed successfully!") {
                 FileMove(".\AutoHotkey-MSIX-release-unsigned.msix", ".\AutoHotkey-MSIX-release-signed.msix", 1)
                 DebugPrint("Package signed successfully!")
             } else
-                DebugPrint("MSIX signing failed: `n" StdOut "`n")
-            FileDelete(".\stdout.tmp")
+                DebugPrint("MSIX signing failed: `n" msg "`n")
         } else
             DebugPrint("MSIX signing failed for an unknown reason")
     }
@@ -206,11 +235,19 @@ DownloadLatestAutoHotkeyVersions() { ; based on DepthTrawler code from https://w
 
 VerifyChecksum(FilePath, VerificationChecksum) {
         ; CertUtil standard output redirected to ".\checksum.tmp".
-        RunWait(A_ComSpec ' /c certutil -hashfile "' FilePath '" SHA256 > "' A_ScriptDir '\checksum.tmp"')
-        StdOut := FileRead(A_ScriptDir "\checksum.tmp")
+        StdOut := RunWaitOutputStd(A_ComSpec ' /c certutil -hashfile "' FilePath '" SHA256')
         if RegExMatch(StdOut, "i)(?<Checksum>[A-F0-9]{64})", &Match) {
             FileChecksum := Match.Checksum
         }
-        FileDelete(A_ScriptDir "\checksum.tmp") ; Cleanup the temporary file.
         return VerificationChecksum = FileChecksum
+}
+
+RunWaitOutputStd(cmd, workingDir := A_WorkingDir, outfile := "stdout.tmp") {
+    RunWait(A_ComSpec ' /c ' (workingDir ? 'cd "' workingDir '" && ' : "") cmd ' > "' outfile '"')
+    msg := ""
+    if FileExist(outfile) {
+        msg := FileRead(outfile)
+        FileDelete(outfile)
+    }
+    return msg
 }
