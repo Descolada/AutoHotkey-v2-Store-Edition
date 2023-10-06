@@ -1,10 +1,11 @@
 .gitignore
 Assets/SignCert.pfx
 Assets/SignCertPasswd.txt
-Assets/StoreUploadData/privacy_policy.*
 /Tests
 /AutoHotkey-MSIX-base/VFS/ProgramFilesX64/AutoHotkey
 /AutoHotkey-MSIX-release
 /AutoHotkey-MSIX-base-*
 AutoHotkey_*_setup.exe
 *.msix
+Report.xml
+resources.pri
