@@ -50,7 +50,7 @@
           <uap3:FileTypeAssociation Name="ahk" Parameters="&quot;%1&quot; %*">
             <uap:Logo>Assets\ahk.png</uap:Logo>
             <uap:SupportedFileTypes>
-              <uap:FileType uap4:ShellNewDisplayName="AutoHotkey Script" uap4:ShellNewFileName="AutoHotkey Script.ahk">.ahk</uap:FileType>
+              <uap:FileType uap4:ShellNewDisplayName="AutoHotkey Script" uap4:ShellNewFileName="Assets\Minimal for v2.ahk">.ahk</uap:FileType>
             </uap:SupportedFileTypes>
             <uap2:SupportedVerbs>
               <uap3:Verb uap7:Default="true" Id="Open" Parameters="/open &quot;%1&quot; %*">Run script</uap3:Verb>
