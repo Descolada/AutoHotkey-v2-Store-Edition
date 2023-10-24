@@ -1,4 +1,4 @@
-This is an *unofficial* store version of AutoHotkey v1 and v2 to use AutoHotkey in limited environments (e.g. S-Mode). It has permission from the official AutoHotkey Team, but is not supported by them.
+This is an unofficial store version for AutoHotkey v1 and v2, modified to be run in Windows 10 S-Mode. It has permission from the official AutoHotkey Team, but is not maintained by them.
 
 AutoHotkey is a free and open-source custom scripting language for Microsoft Windows, initially aimed at providing easy keyboard shortcuts or hotkeys, fast macro-creation and software automation that allows users of most levels of computer skill to automate repetitive tasks in any Windows application. User interfaces can easily be extended or modified by AutoHotkey (for example, overriding the default Windows control key commands with their Emacs equivalents). The AutoHotkey installation includes its own extensive help file, and web-based documentation is also available.
 

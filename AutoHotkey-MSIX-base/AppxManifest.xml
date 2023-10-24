@@ -4,7 +4,7 @@
   <!-- For internal publishing the Publisher should match the subject of the code signing certificate. -->
   <!-- Publisher for Testing: CN=Descolada -->
   <!-- Publisher for Release: CN=DB1E1D5E-14D7-4171-BEBB-84EAB88BC464 -->
-  <Identity Name="53721Descolada.AutoHotkeyv2StoreEdition" ProcessorArchitecture="x64" Publisher="CN=DB1E1D5E-14D7-4171-BEBB-84EAB88BC464" Version="2.0.10.0" />
+  <Identity Name="53721Descolada.AutoHotkeyv2StoreEdition" ProcessorArchitecture="x64" Publisher="CN=Descolada" Version="2.0.10.0" />
   <Properties>
     <DisplayName>AutoHotkey v2 Store Edition</DisplayName>
     <PublisherDisplayName>Descolada</PublisherDisplayName>
@@ -32,10 +32,10 @@
 		Associates with .ahk files	
 		Creates shell menu items for .ahk files 	-->
     <Application EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe" uap10:Parameters="&quot;C:\Program Files\AutoHotkey\UX\ui-dash.ahk&quot;" uap10:Subsystem="console" uap10:SupportsMultipleInstances="true" Id="AutoHotkey">
-      <uap3:VisualElements AppListEntry="default" BackgroundColor="transparent" Description="AutoHotkey Dash" DisplayName="AutoHotkey" Square150x150Logo="Assets\AutoHotkeyDashSquare150x150Logo.png" Square44x44Logo="Assets\AutoHotkeyDashSquare44x44Logo.png" VisualGroup="AutoHotkey Store Edition">
-        <uap:DefaultTile Square310x310Logo="Assets\AutoHotkeyDashSquare310x310Logo.png" Square71x71Logo="Assets\AutoHotkeyDashSquare71x71Logo.png" Wide310x150Logo="Assets\AutoHotkeyDashWide310x150Logo.png" />
-        <uap:SplashScreen Image="Assets\AutoHotkeyDashSplashScreen.png" />
-        <uap:LockScreen BadgeLogo="Assets\AutoHotkeyDashBadgeLogo.png" Notification="badge" />
+      <uap3:VisualElements AppListEntry="default" BackgroundColor="transparent" Description="AutoHotkey Dash" DisplayName="AutoHotkey" Square150x150Logo="Assets\AutoHotkeySquare150x150Logo.png" Square44x44Logo="Assets\AutoHotkeySquare44x44Logo.png" VisualGroup="AutoHotkey Store Edition">
+        <uap:DefaultTile Square310x310Logo="Assets\AutoHotkeySquare310x310Logo.png" Square71x71Logo="Assets\AutoHotkeySquare71x71Logo.png" Wide310x150Logo="Assets\AutoHotkeyWide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\AutoHotkeySplashScreen.png" />
+        <uap:LockScreen BadgeLogo="Assets\AutoHotkeyBadgeLogo.png" Notification="badge" />
       </uap3:VisualElements>
       <Extensions>
         <desktop7:Extension Category="windows.shortcut">
@@ -64,10 +64,10 @@
 	<!--         AutoHotkey v2 U64
 		Creates alias AutoHotkeyV2.exe	-->
     <Application EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey64.exe" uap10:Parameters="&quot;C:\Program Files\AutoHotkey\UX\LaunchHelpV2.ahk&quot;" Id="AutoHotkeyV2U64" uap10:Subsystem="console" uap10:SupportsMultipleInstances="true">
-      <uap3:VisualElements AppListEntry="default" BackgroundColor="transparent" Description="AutoHotkey v2 Unicode 64-bit" DisplayName="AutoHotkey v2" Square150x150Logo="Assets\AutoHotkeyDashSquare150x150Logo.png" Square44x44Logo="Assets\AutoHotkeyDashSquare44x44Logo.png" VisualGroup="AutoHotkey Store Edition">
-        <uap:DefaultTile Square310x310Logo="Assets\AutoHotkeyDashSquare310x310Logo.png" Square71x71Logo="Assets\AutoHotkeyDashSquare71x71Logo.png" Wide310x150Logo="Assets\AutoHotkeyDashWide310x150Logo.png" />
-        <uap:SplashScreen Image="Assets\AutoHotkeyDashSplashScreen.png" />
-        <uap:LockScreen BadgeLogo="Assets\AutoHotkeyDashBadgeLogo.png" Notification="badge" />
+      <uap3:VisualElements AppListEntry="default" BackgroundColor="transparent" Description="AutoHotkey v2 Unicode 64-bit" DisplayName="AutoHotkey v2" Square150x150Logo="Assets\AutoHotkeyV2U64Square150x150Logo.png" Square44x44Logo="Assets\AutoHotkeyV2U64Square44x44Logo.png" VisualGroup="AutoHotkey Store Edition">
+        <uap:DefaultTile Square310x310Logo="Assets\AutoHotkeyV2U64Square310x310Logo.png" Square71x71Logo="Assets\AutoHotkeyV2U64Square71x71Logo.png" Wide310x150Logo="Assets\AutoHotkeyV2U64Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\AutoHotkeyV2U64SplashScreen.png" />
+        <uap:LockScreen BadgeLogo="Assets\AutoHotkeyV2U64BadgeLogo.png" Notification="badge" />
       </uap3:VisualElements>
       <Extensions>
         <uap5:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication" Executable="VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey64.exe">
