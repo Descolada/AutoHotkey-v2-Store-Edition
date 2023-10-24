@@ -51,7 +51,7 @@
 */
 
 typedef std::basic_string<TCHAR, std::char_traits<TCHAR>,
-std::allocator<TCHAR> > tstring;
+    std::allocator<TCHAR> > tstring;
 
 enum StartFlag {
     OPEN = 0,
@@ -115,7 +115,8 @@ int GetProcessName(DWORD pid, TCHAR* fname, DWORD sz) {
         if (GetModuleBaseName(h, NULL, fname, sz) == 0)
             e = GetLastError();
         CloseHandle(h);
-    } else {
+    }
+    else {
         e = GetLastError();
     }
     return (e);
@@ -129,7 +130,7 @@ BOOL FileExists(LPCTSTR szPath)
         !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-DWORD WaitForScript(StartFlag &flag, BOOL bWaitClose, HANDLE hChildProcess, HANDLE hChildThread) {
+DWORD WaitForScript(StartFlag& flag, BOOL bWaitClose, HANDLE hChildProcess, HANDLE hChildThread) {
     // If /launch was injected into the arg list before this function is used (bWaitClose == true), 
     // then wait for the launcher to close. return lpExitCode which should be the PID of the launched script
     DWORD lpExitCode = 0;
@@ -151,9 +152,11 @@ DWORD WaitForScript(StartFlag &flag, BOOL bWaitClose, HANDLE hChildProcess, HAND
             WaitForSingleObject(hChildProcess, INFINITE);
             GetExitCodeProcess(hChildProcess, &lpExitCode);
             CloseHandle(hChildProcess);
-        } else
+        }
+        else
             lpExitCode = GetLastError();
-    } else
+    }
+    else
         return E_FAIL;
     return lpExitCode;
 }
@@ -196,15 +199,20 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         }
         if (lstrcmpi(argv[i], _T("/open")) == 0) {
             flag |= OPEN;
-        } else if (lstrcmpi(argv[i], _T("/launch")) == 0) {
+        }
+        else if (lstrcmpi(argv[i], _T("/launch")) == 0) {
             flag |= LAUNCH;
-        } else if (lstrcmpi(argv[i], _T("/runas")) == 0) {
+        }
+        else if (lstrcmpi(argv[i], _T("/runas")) == 0) {
             flag |= RUNAS;
-        } else if (lstrcmpi(argv[i], _T("/edit")) == 0) {
+        }
+        else if (lstrcmpi(argv[i], _T("/edit")) == 0) {
             flag |= EDIT;
-        } else if (lstrcmpi(argv[i], _T("/disablevfs")) == 0) {
+        }
+        else if (lstrcmpi(argv[i], _T("/disablevfs")) == 0) {
             flag |= DISABLEVFS;
-        } else {
+        }
+        else {
             continue;
         }
         for (int j = i; j < pNumArgs; ++j)
@@ -246,7 +254,8 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
             &pi) && !(flag & LAUNCH))           // Pointer to PROCESS_INFORMATION structure
             return GetLastError();
         return WaitForScript(flag, 1, pi.hProcess, pi.hThread);
-    } else if (flag & RUNAS) { // Run this same exe with all arguments after "/runas" as admin
+    }
+    else if (flag & RUNAS) { // Run this same exe with all arguments after "/runas" as admin
         wstrRemainder = L" /launch ";
         ConcatArgs(wstrRemainder, argv, pNumArgs, startPoint);
         hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
@@ -270,10 +279,10 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
     wchar_t emptyDefault[] = L"";
     LPWSTR scriptPath = (startPoint < pNumArgs) ? argv[startPoint] : emptyDefault;
-  
+
     exeArgs = L""; scriptArgs = L"";
     ConcatArgs(exeArgs, argv, startPoint);
-    ConcatArgs(scriptArgs, argv, pNumArgs, startPoint+1);
+    ConcatArgs(scriptArgs, argv, pNumArgs, startPoint + 1);
 
     // Get default registry values for "edit" or "open" verbs
     HKEY hKey;
@@ -284,7 +293,8 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
             NULL, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS) {
             GetStringRegKey(hKey, L"", pvData, lpDefaultEditor);
         }
-    } else {
+    }
+    else {
         pvData = lpDefaultLauncher;
         if (RegOpenKeyExW(HKEY_CLASSES_ROOT, _T("AutoHotkeyScript\\Shell\\open\\command"),
             NULL, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS) {
@@ -297,7 +307,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
     // If the default launcher.ahk is used but no /launch is in arguments, then add it to the args.
     // This is because this program will act as the launcher and wait for the launched script to terminate,
     // so launcher.ahk doesn't need to wait and consume resources.
-    if ((pvData.find(L"AutoHotkey\\UX\\launcher.ahk") != std::string::npos) && (exeArgs.find(L"/launch") == std::string::npos)){
+    if ((pvData.find(L"AutoHotkey\\UX\\launcher.ahk") != std::string::npos) && (exeArgs.find(L"/launch") == std::string::npos)) {
         exeArgs += (exeArgs.length() ? L" /launch" : L"/launch");
         bInjectedLaunch = true;
     }
@@ -318,10 +328,11 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         if (exeArgs.length()) {
             std::wstring repl = exeArgs + L" \"" + scriptPath + L"\"";
             if (pvData[found - 1] == '\"')
-                pvData.replace(found-1, 4, repl);
-            else 
+                pvData.replace(found - 1, 4, repl);
+            else
                 pvData.replace(found, 2, repl);
-        } else
+        }
+        else
             pvData.replace(found, 2, scriptPath);
     }
     else {
@@ -357,7 +368,8 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         if ((GetProcessName(parentPID, parentName, MAX_PATH) == 0) && (lstrcmpi(parentName, _T("explorer.exe")) == 0)) {
             bWaitClose = false;
         }
-    } else {
+    }
+    else {
         bWaitClose = false;
     }
 
@@ -373,7 +385,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         NULL,           // Use parent's starting directory 
         &si,            // Pointer to STARTUPINFO structure
         &pi)           // Pointer to PROCESS_INFORMATION structure
-    && !(flag & LAUNCH)) // CreateProcess failed if result is non-zero, so return the error code
+        && !(flag & LAUNCH)) // CreateProcess failed if result is non-zero, so return the error code
         return GetLastError();
     return WaitForScript(flag, bWaitClose, pi.hProcess, pi.hThread);
 }
