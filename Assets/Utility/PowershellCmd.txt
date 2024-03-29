@@ -1,0 +1,1 @@
+Remove-AppxPackage -Package '53721Descolada.AutoHotkeyv2StoreEdition_2.0.10.0_x64__16ny5jw0c3c86'; Add-AppxPackage AutoHotkey-MSIX-release-signed.msix

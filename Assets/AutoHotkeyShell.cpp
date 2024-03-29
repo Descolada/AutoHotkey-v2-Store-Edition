@@ -58,7 +58,8 @@ enum StartFlag {
     RUNAS = 1,
     EDIT = 2,
     LAUNCH = 4,
-    DISABLEVFS = 8
+    DISABLEVFS = 8,
+    COMPILE = 16
 };
 DEFINE_ENUM_FLAG_OPERATORS(StartFlag)
 
@@ -147,10 +148,12 @@ DWORD WaitForScript(StartFlag& flag, BOOL bWaitClose, HANDLE hChildProcess, HAND
     }
     // otherwise /launch wasn't used, so wait until the script finishes running
     if (lpExitCode) {
-        hChildProcess = OpenProcess(SYNCHRONIZE, false, lpExitCode);
+        hChildProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, false, lpExitCode);
         if (hChildProcess) {
+            lpExitCode = 0;
             WaitForSingleObject(hChildProcess, INFINITE);
-            GetExitCodeProcess(hChildProcess, &lpExitCode);
+            if (!GetExitCodeProcess(hChildProcess, &lpExitCode))
+                lpExitCode = GetLastError();
             CloseHandle(hChildProcess);
         }
         else
@@ -165,8 +168,8 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 {
     LPCWSTR lpDefaultLauncher = L"\"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe\" \"C:\\Program Files\\AutoHotkey\\UX\\launcher.ahk\" \"%1\" %*";
     LPCWSTR lpDefaultEditor = L"\"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe\" \"C:\\Program Files\\AutoHotkey\\UX\\ui-editor.ahk\" \"%1\"";
+    LPCWSTR lpDefaultCompiler = L"\"C:\\Program Files\\AutoHotkey\\Compiler\\Ahk2Exe.exe\" /gui /in \"%1\" %*";
     LPCWSTR lpVFSAutoHotkeyDir = _T("C:\\Program Files\\AutoHotkey");
-
     int pNumArgs = 0;
     LPWSTR* argv = CommandLineToArgvW(lpCmdLine, &pNumArgs);
 
@@ -192,12 +195,17 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
     StartFlag flag = OPEN;
     int startPoint = pNumArgs;
 
+    // This reads and removes all AutoHotkeyShell-specific flags from the argument list, and finds
+    // the position of the script filename
     for (int i = 0; i < pNumArgs; i++) {
         if (argv[i][0] != '/') {
             startPoint = i;
             break;
-        }
-        if (lstrcmpi(argv[i], _T("/open")) == 0) {
+        } 
+        else if ((lstrcmpi(argv[i], _T("/iLib")) == 0) || (lstrcmpi(argv[i], _T("/include")) == 0)) {
+            i++; continue;
+        } 
+        else if (lstrcmpi(argv[i], _T("/open")) == 0) {
             flag |= OPEN;
         }
         else if (lstrcmpi(argv[i], _T("/launch")) == 0) {
@@ -211,6 +219,9 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         }
         else if (lstrcmpi(argv[i], _T("/disablevfs")) == 0) {
             flag |= DISABLEVFS;
+        }
+        else if (lstrcmpi(argv[i], _T("/compile")) == 0) {
+            flag |= COMPILE;
         }
         else {
             continue;
@@ -231,8 +242,12 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         wchar_t expandedPath[MAX_PATH];
         ExpandEnvironmentStrings(L"%LOCALAPPDATA%\\Microsoft\\WindowsApps\\AutoHotkey.exe", expandedPath, MAX_PATH);
 
-        result = expandedPath;
-        result += L" /launch /disablevfs ";
+        result = L"\"";
+        result += expandedPath;
+        result += L"\" ";
+        if (!(flag & LAUNCH))
+            result += L"/launch "; // Make the next run return the PID which we'll wait to close
+        result += L"/disablevfs "; // Prevent running this again
         result += lpCmdLine;
 
         if (!FileExists(expandedPath)) {
@@ -242,7 +257,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
         GetStartupInfo(&si);
         GetProcessInformation(GetCurrentProcess(), ProcessInformationClassMax, &pi, sizeof(pi));
-        if (CreateProcess(NULL,   // No module name (use command line)
+        if (!CreateProcess(NULL,   // No module name (use command line)
             (LPWSTR)result.c_str(),        // Command line
             NULL,           // Process handle not inheritable
             NULL,           // Thread handle not inheritable
@@ -257,7 +272,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
     }
     else if (flag & RUNAS) { // Run this same exe with all arguments after "/runas" as admin
         wstrRemainder = L" /launch ";
-        ConcatArgs(wstrRemainder, argv, pNumArgs, startPoint);
+        ConcatArgs(wstrRemainder, argv, pNumArgs);
         hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
         SHELLEXECUTEINFO ShExecInfo = { 0 };
         ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -292,6 +307,13 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         if (RegOpenKeyExW(HKEY_CLASSES_ROOT, _T("AutoHotkeyScript\\Shell\\edit\\command"),
             NULL, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS) {
             GetStringRegKey(hKey, L"", pvData, lpDefaultEditor);
+        }
+    }
+    else if (flag & COMPILE) {
+        pvData = lpDefaultCompiler;
+        if (RegOpenKeyExW(HKEY_CLASSES_ROOT, _T("AutoHotkeyScript\\Shell\\compile-gui\\command"),
+            NULL, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS) {
+            GetStringRegKey(hKey, L"", pvData, lpDefaultCompiler);
         }
     }
     else {
@@ -348,18 +370,11 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
     result += pvData.c_str();
 
-    // Do some VFS redirection in case the actual path of the VFS is used.
-    // In that case we need to replace all occurrences of the WindowsApps dir path with
-    // "C:\Program Files\AutoHotkey". This is to ensure adherence to virtualization.
-    found = result.find(parentDir);
-    while (found != std::string::npos) {
-        result.replace(found, parentDir.length(), lpVFSAutoHotkeyDir);
-        found = result.find(parentDir, found + VFSAutoHotkeyDirLen);
-    }
-
     // When the /launch switch is used for this program, don't wait for process to close.
     // However, wait for close if /launch was used AND was injected into the new command.
-    // Also don't wait for process termination if the parent of this process is explorer.exe
+    // In that case we are waiting for launcher.ahk to return the PID of the launched process,
+    // which we can then return.
+    // Also don't wait for process termination if the parent of this process is explorer.exe, or no parent
     bool bWaitClose = !(flag & LAUNCH) || ((flag & LAUNCH) && bInjectedLaunch);
 
     DWORD parentPID = GetParentPID(GetCurrentProcessId());
@@ -372,10 +387,9 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
     else {
         bWaitClose = false;
     }
-
     GetStartupInfo(&si);
     GetProcessInformation(GetCurrentProcess(), ProcessInformationClassMax, &pi, sizeof(pi));
-    if (CreateProcess(NULL,   // No module name (use command line)
+    if (!CreateProcess(NULL,   // No module name (use command line)
         (LPWSTR)result.c_str(),        // Command line
         NULL,           // Process handle not inheritable
         NULL,           // Thread handle not inheritable
@@ -385,7 +399,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         NULL,           // Use parent's starting directory 
         &si,            // Pointer to STARTUPINFO structure
         &pi)           // Pointer to PROCESS_INFORMATION structure
-        && !(flag & LAUNCH)) // CreateProcess failed if result is non-zero, so return the error code
+        && !(flag & LAUNCH)) // CreateProcess failed if result is zero, so return the error code
         return GetLastError();
     return WaitForScript(flag, bWaitClose, pi.hProcess, pi.hThread);
 }

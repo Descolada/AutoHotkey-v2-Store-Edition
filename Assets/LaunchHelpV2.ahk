@@ -1,2 +1,3 @@
 #Requires AutoHotkey v2
-Run '"' SubStr(A_AhkPath, 1, -StrLen("AutoHotkey64.exe")) 'AutoHotkey.chm"'
+SplitPath(A_AhkPath,, &AhkDir)
+Run '"C:\Program Files\AutoHotkey\UX\hh.exe" "' AhkDir '\AutoHotkey.chm"'

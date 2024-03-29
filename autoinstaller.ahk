@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-global AHK_V2_VERSION := "2.0.10.0", AHK_INSTALLDIR := "C:\Program Files\AutoHotkey", AHK_UNINSTALLER := AHK_INSTALLDIR "\UX\ui-uninstall.ahk",
+global AHK_V2_VERSION := "2.0.12.0", AHK_INSTALLDIR := "C:\Program Files\AutoHotkey", AHK_UNINSTALLER := AHK_INSTALLDIR "\UX\ui-uninstall.ahk",
     MSIX_BASEDIR := A_ScriptDir "\AutoHotkey-MSIX-base", MSIX_RELEASEDIR := A_ScriptDir "\AutoHotkey-MSIX-release",
     MAKEPRI_PATH := '"' A_ScriptDir '\Assets\makepri.exe"'
 ; Makepri.exe is usually located in "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makepri.exe"
@@ -18,6 +18,7 @@ Main() {
     RemoveOldAHK()
     DownloadLatestAutoHotkeyVersions()
     InstallAHKVersions()
+    DownloadAhk2Exe()
     CopyFiles()
     PackageFolderToMSIX()
 }
@@ -43,6 +44,11 @@ RemoveOldAHK() {
         }
     }
     DebugPrint("Old AHK folder removed")
+    Loop Files ".\*.exe" {
+        if InStr(A_LoopFilePath, "setup") && InStr(A_LoopFilePath, "AutoHotkey")
+            FileDelete(A_LoopFilePath)
+    }
+    DebugPrint("Old AHK install files removed")
 }
 
 InstallAHKVersions() {
@@ -57,7 +63,7 @@ InstallAHKVersions() {
         RunWait(A_LoopFilePath)
         lastFile := A_LoopFilePath
     }
-    if !WinWaitActive("AutoHotkey Dash",,5) {
+    if !WinWaitActive("AutoHotkey Dash",,10) {
         ExitWithMsg("AHK v2 Dash failed to open. Exiting...")
     }
     WinClose("AutoHotkey Dash")
@@ -76,18 +82,27 @@ CopyFiles() {
     }
     DebugPrint("Copying base MSIX folder and all required extras")
     DirCopy(MSIX_BASEDIR, MSIX_RELEASEDIR)
-    if DirExist(AHK_INSTALLDIR) && FileExist(AHK_INSTALLDIR "\UX\AutoHotkeyUX.exe")
-        DirCopy(AHK_INSTALLDIR, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey")
+    if DirExist(AHK_INSTALLDIR) && FileExist(AHK_INSTALLDIR "\UX\AutoHotkeyUX.exe") && !FileExist(AHK_INSTALLDIR "\v2\AutoHotkeyV2.exe")
+        DirCopy(AHK_INSTALLDIR, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey", 1)
+
+    ;for exe in ["upx.exe", "mpress.exe", "Ahk2Exe.exe"]
+    for exe in ["Ahk2Exe.exe"]
+        FileCopy(".\Assets\" exe, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\Compiler\" exe, 1)
+
+    FileCopy(".\Assets\hh.exe", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\hh.exe", 1)
 
     ; Delete unnecessary exe files: AutoHotkeyUX, default AutoHotkey.exe, UIAccess versions
-    FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\AutoHotkeyUX.exe") ; Unused in the Store Edition
+    ;FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\AutoHotkeyUX.exe") ; Unused in the Store Edition
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\AutoHotkey.exe") ; Unused in the Store Edition
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe") ; Unused in the Store Edition
+    ; Trying to use UIAccess results in error "The request is not supported."
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey64_UIA.exe") ; Unused in the Store Edition
     FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey32_UIA.exe") ; Unused in the Store Edition
     ; Copy AutoHotkeyShell over, which will act as runner for v1 and v2
     ShellName := FileExist(".\AutoHotkey.exe") ? ".\AutoHotkey.exe" : ".\Assets\AutoHotkeyShell.exe"
     FileCopy(ShellName, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey.exe")
+    FileCopy(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\AutoHotkeyU64.exe", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\AutoHotkeyV1.exe")
+    FileCopy(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkey64.exe", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\v2\AutoHotkeyV2.exe")
     ; Copy help file launchers over, which are necessary to avoid this MSIX from needing console application privileges
     FileCopy(".\Assets\LaunchHelpV1.ahk", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\LaunchHelpV1.ahk")
     FileCopy(".\Assets\LaunchHelpV2.ahk", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\LaunchHelpV2.ahk")
@@ -96,22 +111,7 @@ CopyFiles() {
         FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\Templates\Minimal for v2.ahk")
     FileAppend('/*`n[NewScriptTemplate]`nDescription = Standard v2 Template`n*/`n' FileRead(MSIX_RELEASEDIR "\Assets\Minimal for v2.ahk"), MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\Templates\Minimal for v2.ahk")
     FileAppend('/*`n[NewScriptTemplate]`nDescription = Standard v1 Template`n*/`n' FileRead(MSIX_RELEASEDIR "\Assets\Minimal for v1.ahk"), MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\Templates\Minimal for v1.ahk")
-    ; Modify ui-dash.ahk to apply registry defaults for HKCU. This is needed because if the package
-    ; applied the defaults then they can't be written to afterwards... 
-    inject := "
-    (LTrim
-        if ConfigRead("Dash", "FirstRun", "1") = 1
-            ConfigWrite("0", "Dash", "FirstRun"), ConfigWrite("Minimal for v2", "New", "DefaultTemplate")
 
-        class AutoHotkeyDashGui extends
-    )"
-    uidash := FileRead(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-dash.ahk")
-    uidash := StrReplace(uidash, "class AutoHotkeyDashGui extends", inject,, &count:=0, 1)
-    if !count {
-        ExitWithMsg("Failed to inject default registry settings to ui-dash.ahk. Exiting...")
-    }
-    FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-dash.ahk")
-    FileAppend(uidash, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-dash.ahk")
     if AHK_V2_VERSION {
         DebugPrint("Modifying manifest file for version update")
         manifest := FileRead(MSIX_RELEASEDIR "\AppxManifest.xml")
@@ -121,13 +121,10 @@ CopyFiles() {
         FileDelete(MSIX_RELEASEDIR "\AppxManifest.xml")
         FileAppend(manifest, MSIX_RELEASEDIR "\AppxManifest.xml")
     }
-    DebugPrint("Modifying ui-launcherconfig.ahk (disable UIAccess)")
-    launcherconfig := FileRead(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-launcherconfig.ahk")
-    launcherconfig := RegExReplace(launcherconfig, "(this\.AddCheckBox\('vUIA\d x\+m yp\+2)(', `"UI Access`"\))", "$1 Disabled$2", &count:=0)
-    if (count != 2)
-        ExitWithMsg("Couldn't disable UIAccess in ui-launcherconfig.ahk. Exiting...")
-    FileDelete(MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-launcherconfig.ahk")
-    FileAppend(launcherconfig, MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\ui-launcherconfig.ahk")
+    DebugPrint("Running PatchStore.ahk")
+    FileCopy(".\Assets\PatchStore.ahk", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\PatchStore.ahk")
+    RunWait('"' A_AhkPath '" "' MSIX_RELEASEDIR '\VFS\ProgramFilesX64\AutoHotkey\UX\PatchStore.ahk"', MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX")
+    InjectHashes(["v2\AutoHotkey.exe", "v2\AutoHotkeyV2.exe", "AutoHotkeyV1.exe", "UX\PatchStore.ahk", "UX\Templates\Minimal for v2.ahk", "UX\Templates\Minimal for v1.ahk", "UX\LaunchHelpV1.ahk", "UX\LaunchHelpV2.ahk"], MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey")
 }
 
 PackageFolderToMSIX() {
@@ -165,6 +162,63 @@ PackageFolderToMSIX() {
         } else
             DebugPrint("MSIX signing failed for an unknown reason")
     }
+}
+
+InjectHashes(files, RootDir) {
+    if !(DirExist(RootDir "\UX") && (installedfiles := FileRead(RootDir "\UX\installed-files.csv"))) {
+        DebugPrint("InjectHashes: RootDir or installed-files.csv not found", 1)
+        return
+    }
+    originstalledfiles := installedfiles
+    for filename in files {
+        if !FileExist(RootDir "\" filename) {
+            installedfiles := RegExReplace(installedfiles, '\w+,[^,]+,\Q"' filename '"\E,""\r?\n?',, &count:=0)
+            if !count
+                DebugPrint("InjectHashes: failed to remove " filename, 1)
+            continue
+        }
+        if !(hash := HashFile(RootDir "\" filename)) {
+            DebugPrint("InjectHashes: failed to hash " filename, 1)
+            continue
+        }
+        if InStr(installedfiles, filename) {
+            installedfiles := RegExReplace(installedfiles, '\w+(,[^,]*,\Q"' filename '"\E,"[^"\r\n]*")', hash "$1", &count:=0)
+            if !count
+                DebugPrint("InjectHashes: failed to modify " filename, 1)
+        } else {
+            try ; Cache the file description for the launcher
+                exe := GetExeInfo(RootDir "\" filename)
+            catch
+                exe := {Description:"", Version:AHK_V2_VERSION}
+            installedfiles .= Format('{},{},"{}","{}"`r`n', Hash, exe.Version, filename, exe.Description)
+        }
+    }
+
+    A_Clipboard := installedfiles "`r`n`r`n" originstalledfiles
+    if (installedfiles != originstalledfiles) {
+        FileDelete(RootDir "\UX\installed-files.csv")
+        FileAppend(installedfiles, RootDir "\UX\installed-files.csv")
+    }
+}
+
+GetExeInfo(exe) {
+    if !(verSize := DllCall("version\GetFileVersionInfoSize", "str", exe, "uint*", 0, "uint"))
+        || !DllCall("version\GetFileVersionInfo", "str", exe, "uint", 0, "uint", verSize, "ptr", verInfo := Buffer(verSize))
+        throw OSError()
+    prop := {Path: exe}
+    static Properties := {
+        Version: 'FileVersion',
+        Description: 'FileDescription',
+        ProductName: 'ProductName'
+    }
+    for propName, infoName in Properties.OwnProps()
+        if DllCall("version\VerQueryValue", "ptr", verInfo, "str", "\StringFileInfo\040904b0\" infoName, "ptr*", &p:=0, "uint*", &len:=0)
+            prop.%propName% := StrGet(p, len)
+        else throw OSError()
+    if InStr(exe, '_UIA')
+        prop.Description .= ' UIA'
+    prop.Version := RegExReplace(prop.Version, 'i)[a-z]{2,}\K(?=\d)|, ', '.') ; Hack-fix for erroneous version numbers (AutoHotkey_H v2.0-beta3-H...)
+    return prop
 }
 
 ExitWithMsg(msg) {
@@ -223,12 +277,60 @@ DownloadLatestAutoHotkeyVersions() { ; based on DepthTrawler code from https://w
         if !FileExist(FilePath) {
             Download("https://www.autohotkey.com/download/" (version = "2.0" ? "ahk-v2.exe" : "ahk-install.exe"), FilePath)
             ; Ensure the file's checksum matches the reported verification checksum.
-            if VerifyChecksum(FilePath, VerificationChecksum) {
-                MaybeExitWithMsg('The downloaded file`'s checksum:`n"' Filename '"`ndoes not match the reported verification checksum.`nContinue anyway?', "YesNo", "Yes")
+            if !VerifyChecksum(FilePath, VerificationChecksum) {
+                MaybeExitWithMsg('The downloaded file`'s checksum:`n"' Filename '"`ndoes not match the reported verification checksum.`nContinue anyway?' , "YesNo", "Yes")
             }
             DebugPrint("AHK v" version " successfully downloaded")
         } else {
             DebugPrint("AHK v" version " already downloaded, skipping download...")
+        }
+    }
+}
+
+DownloadAhk2Exe() {
+    static TempFile := ".\temp.zip", TempFolder := ".\temp"
+    if FileExist(TempFile)
+        FileDelete(TempFile)
+    if DirExist(TempFolder)
+        DirDelete(TempFolder, 1)
+    ;for target in [{repo:"UPX/UPX", ext:"64.zip", exe:"upx.exe"}, {repo:"AutoHotkey/Ahk2Exe", exe:"Ahk2Exe.exe"}, {url:"https://www.autohotkey.com/mpress/mpress.219.zip", exe:"mpress.exe"}] {
+    for target in [{repo:"AutoHotkey/Ahk2Exe", exe:"Ahk2Exe.exe"}] {
+        if target.HasOwnProp("repo") {
+            try DownloadGithub(TempFile, target.repo, target.HasOwnProp("ext") ? target.ext : ".zip")
+        } else {
+            try Download target.url, TempFile
+        }
+        if !FileExist(TempFile)
+            ExitWithMsg("Unable to download " target.exe)
+        DirCopy(".\temp.zip", ".\temp")
+
+        Loop Files ".\temp\*", "R"
+            if A_LoopFileName = target.exe
+                FileCopy(A_LoopFileFullPath, ".\Assets\" target.exe, 1)
+
+        FileDelete(TempFile)
+        DirDelete(TempFolder, 1)
+
+        if !FileExist(".\Assets\" target.exe)
+            ExitWithMsg("Unable to copy " target.exe " from temp folder")
+    }
+}
+
+DownloadGithub(To, Repo, Ext := ".zip", Typ := "browser_download") {
+	Req := ComObject("Msxml2.XMLHTTP")
+	Req.open("GET", "https://api.github.com/repos/" Repo "/releases/latest", 0)
+    Req.send()
+    while req.readyState != 4
+        sleep 100
+	if (Req.status = 200) {	
+        Res := Req.responseText, Type1 := "browser_download", Type2 := "zipball"
+		while RegExMatch(Res,"i)`"" Typ "_url`":`"") {
+            Res := RegExReplace(Res,"iU)^.+`"" Typ "_url`":`"")
+			Url := RegExReplace(Res,"`".+$")
+			if (!Ext || SubStr(url, -StrLen(Ext)) = Ext) {
+                Download(Url, To)
+                return Url
+            }
         }
     }
 }
@@ -250,4 +352,98 @@ RunWaitOutputStd(cmd, workingDir := A_WorkingDir, outfile := "stdout.tmp") {
         FileDelete(outfile)
     }
     return msg
+}
+
+; HashFile by Deo
+; https://autohotkey.com/board/topic/66139-ahk-l-calculating-md5sha-checksum-from-file/
+; Modified for AutoHotkey v2 by lexikos.
+/*
+HASH types:
+1 - MD2
+2 - MD5
+3 - SHA
+4 - SHA256
+5 - SHA384
+6 - SHA512
+*/
+HashFile(filePath, hashType:=2)
+{
+	static PROV_RSA_AES := 24
+	static CRYPT_VERIFYCONTEXT := 0xF0000000
+	static BUFF_SIZE := 1024 * 1024 ; 1 MB
+	static HP_HASHVAL := 0x0002
+	static HP_HASHSIZE := 0x0004
+	
+    switch hashType {
+        case 1: hash_alg := (CALG_MD2 := 32769)
+        case 2: hash_alg := (CALG_MD5 := 32771)
+        case 3: hash_alg := (CALG_SHA := 32772)
+        case 4: hash_alg := (CALG_SHA_256 := 32780)
+        case 5: hash_alg := (CALG_SHA_384 := 32781)
+        case 6: hash_alg := (CALG_SHA_512 := 32782)
+        default: throw ValueError('Invalid hashType', -1, hashType)
+    }
+	
+	f := FileOpen(filePath, "r")
+    f.Pos := 0 ; Rewind in case of BOM.
+    
+    HCRYPTPROV() => {
+        ptr: 0,
+        __delete: this => this.ptr && DllCall("Advapi32\CryptReleaseContext", "Ptr", this, "UInt", 0)
+    }
+    
+	if !DllCall("Advapi32\CryptAcquireContextW"
+				, "Ptr*", hProv := HCRYPTPROV()
+				, "Uint", 0
+				, "Uint", 0
+				, "Uint", PROV_RSA_AES
+				, "UInt", CRYPT_VERIFYCONTEXT)
+		throw OSError()
+	
+    HCRYPTHASH() => {
+        ptr: 0,
+        __delete: this => this.ptr && DllCall("Advapi32\CryptDestroyHash", "Ptr", this)
+    }
+    
+	if !DllCall("Advapi32\CryptCreateHash"
+				, "Ptr", hProv
+				, "Uint", hash_alg
+				, "Uint", 0
+				, "Uint", 0
+				, "Ptr*", hHash := HCRYPTHASH())
+        throw OSError()
+	
+	read_buf := Buffer(BUFF_SIZE, 0)
+	
+	While (cbCount := f.RawRead(read_buf, BUFF_SIZE))
+	{
+		if !DllCall("Advapi32\CryptHashData"
+					, "Ptr", hHash
+					, "Ptr", read_buf
+					, "Uint", cbCount
+					, "Uint", 0)
+			throw OSError()
+	}
+	
+	if !DllCall("Advapi32\CryptGetHashParam"
+				, "Ptr", hHash
+				, "Uint", HP_HASHSIZE
+				, "Uint*", &HashLen := 0
+				, "Uint*", &HashLenSize := 4
+				, "UInt", 0) 
+        throw OSError()
+		
+    bHash := Buffer(HashLen, 0)
+	if !DllCall("Advapi32\CryptGetHashParam"
+				, "Ptr", hHash
+				, "Uint", HP_HASHVAL
+				, "Ptr", bHash
+				, "Uint*", &HashLen
+				, "UInt", 0 )
+        throw OSError()
+	
+	loop HashLen
+		HashVal .= Format('{:02x}', (NumGet(bHash, A_Index-1, "UChar")) & 0xff)
+	
+	return HashVal
 }
