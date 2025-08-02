@@ -4,7 +4,7 @@
   <!-- For internal publishing the Publisher should match the subject of the code signing certificate. -->
   <!-- Publisher for Testing: CN=Descolada -->
   <!-- Publisher for Release: CN=DB1E1D5E-14D7-4171-BEBB-84EAB88BC464 -->
-  <Identity Name="53721Descolada.AutoHotkeyv2StoreEdition" ProcessorArchitecture="x64" Publisher="CN=Descolada" Version="2.0.10.0" />
+  <Identity Name="53721Descolada.AutoHotkeyv2StoreEdition" ProcessorArchitecture="x64" Publisher="CN=Descolada" Version="2.0.18.0" />
   <Properties>
     <DisplayName>AutoHotkey v2 Store Edition</DisplayName>
     <PublisherDisplayName>Descolada</PublisherDisplayName>

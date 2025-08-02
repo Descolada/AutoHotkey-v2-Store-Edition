@@ -17,25 +17,6 @@ if FileExist(".\ui-dash.ahk") {
         DebugPrint("Couldn't redirect help files in ui-dash.ahk.")
 }
 
-if FileExist(".\ui-launcherconfig.ahk") {
-    ; Disable UI Access checkboxes in ui-launcherconfig.ahk, because UIAccess is not available in the Store edition
-    launcherconfig := FileRead(".\ui-launcherconfig.ahk")
-    if RegExMatch(launcherconfig, "this\.AddCheckBox\('vUIA\d x\+m yp\+2', `"UI Access`"\)") {
-        launcherconfig := RegExReplace(launcherconfig, "(this\.AddCheckBox\('vUIA\d x\+m yp\+2)(', `"UI Access`"\))", "$1 Disabled$2", &count:=0)
-        if (count != 2)
-            DebugPrint("Couldn't disable UIAccess in ui-launcherconfig.ahk.")
-        else {
-            try {
-                FileDelete(".\ui-launcherconfig.ahk")
-                FileAppend(launcherconfig, ".\ui-launcherconfig.ahk")
-                DebugPrint("Disabled UIAccess in ui-launcherconfig.ahk.")
-            } catch
-                DebugPrint("Failed to write ui-launcherconfig.ahk")
-        }
-    } else
-        DebugPrint("ui-launcherconfig.ahk had UIAccess already disabled, skipping.")
-}
-
 if FileExist(".\install.ahk") {
     ; Change GetExeInfo path argument, because otherwise the GetFileVersionInfoSize call will fail
     install := FileRead(".\install.ahk"), orig := install
@@ -48,7 +29,6 @@ if FileExist(".\install.ahk") {
 
     ; Force UserInstall mode, because HKCU install dir can't be easily made default in other ways
     install := StrReplace(install, "this.UserInstall := false", "this.UserInstall := true")
-
     ; Do not create any new shortcuts
     needle := 'this.AddPostAction this.Create', inject := ';this.AddPostAction this.Create'
     install := RegExReplace(install, "(?<!;)this\.AddPostAction this\.Create", inject)
@@ -84,11 +64,11 @@ if FileExist(".\install-version.ahk") {
     inject := "
     (LTrim
         try if DirExist(inst.SourceDir '\UX') && FileExist(inst.InstallDir "\UX\PatchStore.ahk") {
-            FileCopy(inst.InstallDir "\UX\PatchStore.ahk", inst.SourceDir '\UX\PatchStore.ahk')
-            Run('AutoHotkey.exe "' inst.SourceDir '\UX\PatchStore.ahk"', inst.SourceDir '\UX')
-        }
+            `t`tFileCopy(inst.InstallDir "\UX\PatchStore.ahk", inst.SourceDir '\UX\PatchStore.ahk')
+            `t`tRunWait('AutoHotkey.exe "' inst.SourceDir '\UX\PatchStore.ahk"', inst.SourceDir '\UX')
+        `t}
         
-        try localUX := inst.Hashes['UX\install.ahk']
+        `ttry localUX := inst.Hashes['UX\install.ahk']
     )"
     installversion := FileRead(".\install-version.ahk")
     if InStr(installversion, needle) && !InStr(installversion, inject) {
@@ -121,15 +101,35 @@ if FileExist(".\launcher.ahk") {
         launcher := StrReplace(launcher, needle, inject,, &count:=0, 1)
         if !count {
             DebugPrint("Failed to inject S-mode check to launcher.ahk.")
-        } else {
-            try {
-                FileDelete(".\launcher.ahk"), FileAppend(launcher, ".\launcher.ahk")
-                DebugPrint("Injected S-mode check to install-version.ahk.")
-            } catch
-                DebugPrint("Failed to inject S-mode check to launcher.ahk")
         }
     } else
-        DebugPrint("launcher.ahk already has S-mode check injceted, skipping.")
+        DebugPrint("launcher.ahk already has S-mode check injected, skipping.")
+
+    needle := 'ExitApp 2 `; FIXME: code would need to be read in and then passed to the real AutoHotkey'
+    inject := 'ExitApp LaunchScript(GetRequiredOrPreferredExe("2", "").Path, ScriptPath, A_Args, switches)'
+    if InStr(launcher, needle) && !InStr(launcher, inject) {
+        launcher := StrReplace(launcher, needle, inject,, &count:=0, 1)
+        if !count {
+            DebugPrint("Failed to inject StdIn patch to launcher.ahk.")
+        } else {
+            needle := "cmd := Format('`"{1}`"{2} `"{3}`"{4}', exe, switches, ahk, makeArgs(args))"
+            inject := "cmd := ahk = '*' ? Format('`"{1}`"{2} {3}', exe, switches, ahk) : Format('`"{1}`"{2} `"{3}`"{4}', exe, switches, ahk, makeArgs(args))"
+            if InStr(launcher, needle) && !InStr(launcher, inject) {
+                launcher := StrReplace(launcher, needle, inject,, &count:=0, 1)
+                if !count
+                    DebugPrint("Failed to inject StdIn cmd patch to launcher.ahk.")
+            }
+        }
+    } else
+        DebugPrint("launcher.ahk already has StdIn patch injected, skipping.")
+    
+    if (launcher != orig && launcher != "") {
+        try {
+            FileDelete(".\launcher.ahk"), FileAppend(launcher, ".\launcher.ahk")
+            DebugPrint("Injected S-mode check and StdIn patch to install-version.ahk.")
+        } catch
+            DebugPrint("Failed to inject S-mode check and StdIn patch to launcher.ahk")
+    }
 }
 
 ; Not needed
@@ -148,7 +148,7 @@ InjectHashes(files, RootDir) {
     originstalledfiles := installedfiles
     for filename in files {
         if !FileExist(RootDir "\" filename) {
-            installedfiles := RegExReplace(installedfiles, '\w+,[^,]+,\Q"' filename '"\E,""\r?\n?',, &count:=0)
+            installedfiles := RegExReplace(installedfiles, '\w+,[^,]+,\Q"' filename '"\E,"[^"]*"\r?\n?',, &count:=0)
             if !count
                 DebugPrint("InjectHashes: failed to remove " filename, 1)
             continue
@@ -170,11 +170,8 @@ InjectHashes(files, RootDir) {
         }
     }
 
-    A_Clipboard := installedfiles "`r`n`r`n" originstalledfiles
-    if (installedfiles != originstalledfiles) {
-        FileDelete(RootDir "\UX\installed-files.csv")
-        FileAppend(installedfiles, RootDir "\UX\installed-files.csv")
-    }
+    if (installedfiles != originstalledfiles)
+        FileOpen(RootDir "\UX\installed-files.csv", "w").Write(installedfiles)
 }
 
 GetExeInfo(exe) {

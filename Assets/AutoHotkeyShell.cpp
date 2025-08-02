@@ -170,6 +170,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
     LPCWSTR lpDefaultEditor = L"\"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe\" \"C:\\Program Files\\AutoHotkey\\UX\\ui-editor.ahk\" \"%1\"";
     LPCWSTR lpDefaultCompiler = L"\"C:\\Program Files\\AutoHotkey\\Compiler\\Ahk2Exe.exe\" /gui /in \"%1\" %*";
     LPCWSTR lpVFSAutoHotkeyDir = _T("C:\\Program Files\\AutoHotkey");
+    //MessageBox(0, lpCmdLine, L"lpCmdLine", MB_OK);
     int pNumArgs = 0;
     LPWSTR* argv = CommandLineToArgvW(lpCmdLine, &pNumArgs);
 
@@ -205,6 +206,9 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         else if ((lstrcmpi(argv[i], _T("/iLib")) == 0) || (lstrcmpi(argv[i], _T("/include")) == 0)) {
             i++; continue;
         } 
+        else if (lstrcmpi(argv[i], _T("/RunWith")) == 0) { // Launcher.ahk specific. /which gets passed through without intervening
+            i++; continue;
+        }
         else if (lstrcmpi(argv[i], _T("/open")) == 0) {
             flag |= OPEN;
         }
@@ -258,11 +262,11 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
         GetStartupInfo(&si);
         GetProcessInformation(GetCurrentProcess(), ProcessInformationClassMax, &pi, sizeof(pi));
         if (!CreateProcess(NULL,   // No module name (use command line)
-            (LPWSTR)result.c_str(),        // Command line
+            &result[0],        // Command line
             NULL,           // Process handle not inheritable
             NULL,           // Thread handle not inheritable
             TRUE,          // Set handle inheritance to TRUE
-            CREATE_NO_WINDOW, // The process is a console application that is being run without a console window. 
+            0,              // Console window might be required if the script is passed with StdIn
             NULL,           // Use parent's environment block
             NULL,           // Use parent's starting directory 
             &si,            // Pointer to STARTUPINFO structure
@@ -348,7 +352,12 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
     found = pvData.find(_T("%1"));
     if (found != std::string::npos) {
         if (exeArgs.length()) {
-            std::wstring repl = exeArgs + L" \"" + scriptPath + L"\"";
+            std::wstring repl;
+            if (wcsstr(scriptPath, _T(" "))) {
+                repl = exeArgs + L" \"" + scriptPath + L"\"";
+            } else {
+                repl = exeArgs + L" " + scriptPath;
+            }
             if (pvData[found - 1] == '\"')
                 pvData.replace(found - 1, 4, repl);
             else
@@ -370,6 +379,20 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
     result += pvData.c_str();
 
+    // Do some VFS redirection in case the actual path of the VFS is used.
+    // In that case we need to replace all occurrences of the WindowsApps dir path with
+    // "C:\Program Files\AutoHotkey". This is to ensure adherence to virtualization.
+    //found = result.find(lpVFSAutoHotkeyDir);
+    //while (found != std::string::npos) {
+    //    result.replace(found, VFSAutoHotkeyDirLen, parentDir);
+    //    found = result.find(lpVFSAutoHotkeyDir, found + parentDir.length());
+    //}
+    //found = result.find(parentDir);
+    //while (found != std::string::npos) {
+    //    result.replace(found, parentDir.length(), lpVFSAutoHotkeyDir);
+    //    found = result.find(parentDir, found + VFSAutoHotkeyDirLen);
+    //}
+
     // When the /launch switch is used for this program, don't wait for process to close.
     // However, wait for close if /launch was used AND was injected into the new command.
     // In that case we are waiting for launcher.ahk to return the PID of the launched process,
@@ -387,14 +410,17 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
     else {
         bWaitClose = false;
     }
+    //wchar_t strbuf[2048];
+    //swprintf_s(strbuf, 2048, L"exeArgs: %s\nscriptArgs: %s\nlpCmdLine: %s\nResult: %s\nFlag: %i\nLaunch: %i\nbWaitClose: %i", exeArgs.c_str(), scriptArgs.c_str(), lpCmdLine, result.c_str(), flag, flag & LAUNCH, bWaitClose);
+    //MessageBox(0, strbuf, L"Debug", MB_OK);
     GetStartupInfo(&si);
     GetProcessInformation(GetCurrentProcess(), ProcessInformationClassMax, &pi, sizeof(pi));
     if (!CreateProcess(NULL,   // No module name (use command line)
-        (LPWSTR)result.c_str(),        // Command line
+        &result[0],        // Command line
         NULL,           // Process handle not inheritable
         NULL,           // Thread handle not inheritable
         TRUE,          // Set handle inheritance to TRUE
-        CREATE_NO_WINDOW, // The process is a console application that is being run without a console window. 
+        0,          // Console window might be required if the script is passed with StdIn
         NULL,           // Use parent's environment block
         NULL,           // Use parent's starting directory 
         &si,            // Pointer to STARTUPINFO structure

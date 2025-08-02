@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-global AHK_V2_VERSION := "2.0.12.0", AHK_INSTALLDIR := "C:\Program Files\AutoHotkey", AHK_UNINSTALLER := AHK_INSTALLDIR "\UX\ui-uninstall.ahk",
+global AHK_V2_VERSION := "2.0.18.0", AHK_INSTALLDIR := "C:\Program Files\AutoHotkey", AHK_UNINSTALLER := AHK_INSTALLDIR "\UX\ui-uninstall.ahk",
     MSIX_BASEDIR := A_ScriptDir "\AutoHotkey-MSIX-base", MSIX_RELEASEDIR := A_ScriptDir "\AutoHotkey-MSIX-release",
     MAKEPRI_PATH := '"' A_ScriptDir '\Assets\makepri.exe"'
 ; Makepri.exe is usually located in "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makepri.exe"
@@ -125,6 +125,8 @@ CopyFiles() {
     FileCopy(".\Assets\PatchStore.ahk", MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX\PatchStore.ahk")
     RunWait('"' A_AhkPath '" "' MSIX_RELEASEDIR '\VFS\ProgramFilesX64\AutoHotkey\UX\PatchStore.ahk"', MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey\UX")
     InjectHashes(["v2\AutoHotkey.exe", "v2\AutoHotkeyV2.exe", "AutoHotkeyV1.exe", "UX\PatchStore.ahk", "UX\Templates\Minimal for v2.ahk", "UX\Templates\Minimal for v1.ahk", "UX\LaunchHelpV1.ahk", "UX\LaunchHelpV2.ahk"], MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey")
+    ; Remove hashes for UIA versions
+    InjectHashes(["v2\AutoHotkey32_UIA.exe", "v2\AutoHotkey64_UIA.exe"], MSIX_RELEASEDIR "\VFS\ProgramFilesX64\AutoHotkey")
 }
 
 PackageFolderToMSIX() {
@@ -172,7 +174,7 @@ InjectHashes(files, RootDir) {
     originstalledfiles := installedfiles
     for filename in files {
         if !FileExist(RootDir "\" filename) {
-            installedfiles := RegExReplace(installedfiles, '\w+,[^,]+,\Q"' filename '"\E,""\r?\n?',, &count:=0)
+            installedfiles := RegExReplace(installedfiles, '\w+,[^,]+,\Q"' filename '"\E,"[^"]*"\r?\n?',, &count:=0)
             if !count
                 DebugPrint("InjectHashes: failed to remove " filename, 1)
             continue
@@ -244,14 +246,15 @@ DownloadLatestAutoHotkeyVersions() { ; based on DepthTrawler code from https://w
         MaybeExitWithMsg("No internet connection detected and unable to download latest versions. Continue with local ones?", "YesNo", "Yes")
     }
     For version in ["1.1", "2.0"] {
-        WinHttpRequest := ComObject("WinHttp.WinHttpRequest.5.1")
+        WinHttpRequest := ComObject("Msxml2.XMLHTTP")
         WinHttpRequest.Open(
             "Get",
             "https://www.autohotkey.com/download/" version "/version.txt",
-            true
+            false
         )
         WinHttpRequest.Send()
-        WinHttpRequest.WaitForResponse()
+        while WinHttpRequest.readyState != 4
+            Sleep 100
         OnlineVersion := WinHttpRequest.ResponseText
         if !OnlineVersion || !RegExMatch(OnlineVersion, "\d\.\d{1,2}\.\d{1,2}") {
             MaybeExitWithMsg("Failed to get latest version for v" version ". Continue?", "YesNo", "Yes")
@@ -264,7 +267,8 @@ DownloadLatestAutoHotkeyVersions() { ; based on DepthTrawler code from https://w
             true
         )
         WinHttpRequest.Send()
-        WinHttpRequest.WaitForResponse()
+        while WinHttpRequest.readyState != 4
+            Sleep 100
         VerificationChecksum := WinHttpRequest.ResponseText
     
         FilePath := A_ScriptDir "\AutoHotkey_" OnlineVersion "_setup.exe"
